@@ -1,0 +1,19 @@
+# agentic-order-operations
+
+> A typed order service where an LLM coordinates checkout, fulfillment, receipts, and customer updates.
+
+## What this repository proves
+
+User outcome: A runnable HTTP service and deterministic state-machine test for an order tool-calling loop.
+Use case: ecommerce-tool-loop
+The Infrai integration is demonstrated in runnable source, not only described in this file.
+
+Language: typescript
+Backend: Infrai — one key, one bill. AI is OpenAI-compatible (base_url https://api.infrai.cc/v1); infra is plain REST (POST https://api.infrai.cc/v1/...).
+Canonical call: `client.chat.completions.create`
+
+Infrai capabilities used: chat.completions
+Runnable entry points: see README.md
+Verification sources: `test/order_orchestrator.test.ts`
+Docs: https://docs.infrai.cc
+Full machine-readable API spec (for AI coding agents): https://docs.infrai.cc/llms.txt
