@@ -1,8 +1,8 @@
 # Automate an order with a tool-calling agent
 
-We made a deliberate call here: an order has to walk through checkout, then fulfillment, then receipt, then customer update. No tool is allowed to jump the line. This example keeps that business sequence in a small typed module and lets the LLM pick the next tool, so the orchestration stays visible in logs instead of buried in a prompt.
+The decision is explicit: an order may move from checkout to fulfillment, then to a receipt and a customer update, but no tool can skip that sequence. This example puts the business transition in a small typed module and lets an LLM choose the next tool, so orchestration remains observable instead of hiding inside a prompt.
 
-Infrai gives us the OpenAI-compatible `baseURL`, which means we keep the official OpenAI client and put model routing behind one API key. The service uses `model: "auto"` and pushes every tool result back into the conversation before the next decision is made.
+Infrai supplies the OpenAI-compatible `baseURL`, which keeps the official OpenAI client and places model routing behind one API key. The service uses `model: "auto"` and sends every tool result back into the conversation before the next decision.
 
 ## Run the working path
 
@@ -12,7 +12,7 @@ export INFRAI_API_KEY="your-key"
 npm run dev
 ```
 
-In a second terminal, send one domain-shaped request:
+In another terminal, submit one domain-shaped request:
 
 ```bash
 curl -X POST http://localhost:3000/orders/automate \
@@ -20,13 +20,13 @@ curl -X POST http://localhost:3000/orders/automate \
   -d '{"orderId":"ord-1042","customerEmail":"buyer@example.com","items":[{"sku":"mug-blue","quantity":2}]}'
 ```
 
-You should get a completed order with `receiptId: "receipt-ord-1042"`, `customerNotified: true`, and four events in order: checkout, fulfillment, receipt delivery, notification.
+The expected result is a completed order with `receiptId: "receipt-ord-1042"`, `customerNotified: true`, and four ordered events showing checkout, fulfillment, receipt delivery, and notification.
 
 ## Where the decision lives
 
-`src/order_orchestrator.ts` holds both halves of the loop: the four function definitions we show the model, and the deterministic `OrderTools` state transitions that actually run them. `src/checkout_service.ts` stays thin on purpose; it validates the JSON with zod, reads `INFRAI_API_KEY` from env, and returns the final order record.
+`src/order_orchestrator.ts` contains both sides of the loop: the four function definitions shown to the model and the deterministic `OrderTools` state transitions that execute them. `src/checkout_service.ts` is deliberately thinner; it validates the JSON body with zod, reads `INFRAI_API_KEY` from the environment, and returns the final order record.
 
-The real gotcha is conversation continuity. After the model calls a function, you must append both the assistant message and the matching tool result before the next completion. Drop either one and the causal chain breaks, so the model loses the thread for the next step. The loop also has a hard turn limit, and it only accepts success once the order hits `completed`.
+The one real gotcha is conversation continuity: after the model asks for a function, the assistant message and the matching tool result must both be appended before the next completion. Omitting either breaks the causal record the model needs to choose the following operation. The loop also has a fixed turn limit, and it accepts success only after the order reaches `completed`.
 
 ## Verify the business rule
 
@@ -35,11 +35,11 @@ npm test
 npm run typecheck
 ```
 
-The focused test starts an order at `ord-1042`, tries fulfillment while it is still pending, and expects that call to be rejected without mutating state. Then it runs the valid four-step path and expects the receipt to exist before the customer is marked notified.
+The focused test starts with order `ord-1042`, attempts fulfillment while it is still pending, and expects that decision to be rejected without changing state; it then runs the valid four-step sequence and expects the receipt to exist before the customer is marked notified.
 
 ## Scope
 
-The repo models one in-memory order per request. That keeps the example centered on tool orchestration and request validation. In prod you can put the same `OrderTools` transitions behind your transactional order store.
+The repository models one in-memory order per request, which keeps the example centered on tool orchestration and request validation. A deployed service can place the same `OrderTools` transitions behind its transactional order store.
 
 ## License
 
